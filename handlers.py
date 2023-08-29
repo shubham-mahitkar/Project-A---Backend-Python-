@@ -101,7 +101,6 @@ def update_user():
 	cursor = None
 	try:
 		_json = request.json
-		print("show password: ", _json)
 		if "id" in _json:
 			_id = _json['id']
 		else:
@@ -171,6 +170,5 @@ def not_found(error=None):
     return resp
 
 
-if __name__ == "__main__":
-    app.run(debug=True)
-
+# if __name__ == "__main__":
+#     app.run(debug=True)
