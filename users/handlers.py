@@ -39,20 +39,11 @@ def add_user():
 @app.route('/users')
 @cross_origin(supports_credentials=True)
 def users():
-	lst = []
-	count = 0
+
 	try:
 		user = UserModel()
 		rows = user.get_users()
-		for x in rows:
-			inner_obj = {}
-			inner_obj['id']= x[0]
-			inner_obj['name']= x[1]
-			inner_obj['email']= x[2]
-			inner_obj['password']= x[3]
-			lst.insert(count+1, inner_obj)
-			count+=1
-		return lst
+		return jsonify(rows)
 	except Exception as e:
 		print(e)
 

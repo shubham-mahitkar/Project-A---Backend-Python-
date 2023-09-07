@@ -15,12 +15,22 @@ from users.connectors.db import mysql
 class UserModel:
 
     def __init__(self):
+        # @todo try DictCursor instead of x[0]
         self.cursor = mysql.connection.cursor()
 
     def get_users(self):
         self.cursor.execute("SELECT user_id id, user_name name, user_email email, user_password password FROM tbl_user")
         data = self.cursor.fetchall()
-        return data
+        lst = []
+        for x in data:
+            # this would not be required with DictCursor
+            inner_obj = {}
+            inner_obj['id'] = x[0]
+            inner_obj['name'] = x[1]
+            inner_obj['email'] = x[2]
+            inner_obj['password'] = x[3]
+            lst.append(inner_obj)
+        return lst
 
     def user_details(self, id):
         self.cursor.execute(f"SELECT user_id id, user_name name, user_email email, user_password password FROM tbl_user WHERE user_id={id}")

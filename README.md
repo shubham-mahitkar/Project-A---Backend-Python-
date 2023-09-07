@@ -1,6 +1,6 @@
 # Project A - CRUD Operation (Backend - Python)
 
 
-> To start project run dev.py file
+#### To start project run `$> python dev.py` file
 
-> To run tests cases: run -> ```python -m unittest tests\unit\test.py```
+#### To run tests cases: run `$> py.test tests/unit/`
