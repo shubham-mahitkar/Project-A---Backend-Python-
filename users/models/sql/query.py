@@ -43,6 +43,7 @@ class UserModel:
         cursor = mysql.connection.cursor()
         cursor.execute(sql, data)
         mysql.connection.commit()
+        return {"id":cursor.lastrowid, "name":name, "email": email, "password": password }
 
     def delete_user(self, id):
         cursor = mysql.connection.cursor()
@@ -55,3 +56,4 @@ class UserModel:
         cursor = mysql.connection.cursor()
         cursor.execute(sql, data)
         mysql.connection.commit()
+        return {"id":id, "name":name, "email": email }
