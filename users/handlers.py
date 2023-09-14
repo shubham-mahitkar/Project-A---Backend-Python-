@@ -58,17 +58,24 @@ def user(id):
 	try:
 		user = UserModel()
 		row = user.user_details(id)
-		neo_user = CypherModel()
-		rows = neo_user.user_details_by_id(id)
-		print("rows: ", rows)
+		if row is None:
+			return "Id not found in database"
 		inner_obj = {}
 		inner_obj['id']= row[0]
 		inner_obj['name']= row[1]
 		inner_obj['email']= row[2]
 		inner_obj['password']= row[3]
-		# lst.append(inner_obj)
-		inner_obj['application'] = rows['application']
-		return inner_obj
+		neo_user = CypherModel()
+		rows = neo_user.user_details_by_id(id)
+		if rows == None:
+			lst.append(inner_obj)
+			return jsonify(lst)
+		elif row[0] == rows['neo_id']:
+			inner_obj['application'] = rows['application']
+		else:
+			inner_obj['application'] = ['no application registerd']
+		lst.append(inner_obj)
+		return jsonify(lst)
 	except Exception as e:
 		print(e)
 
