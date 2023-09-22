@@ -24,12 +24,20 @@ def add_user():
 			_password = _json['password']
 		else:
 			raise Exception("Missing field 'password'")
+		if "application" in _json:
+			_application = _json['application']
+		else:
+			raise Exception("Application is not registerd")
 
 		if _name and _email and _password and request.method == 'POST':
 			#do not save password as a plain text
 			_hashed_password = generate_password_hash(_password)
 			user = UserModel()
 			data = user.add_user(_name, _email, _hashed_password)
+			id = data['id']
+			neo_user = CypherModel()
+			apps = neo_user.add_user_application(id, _name, _application)
+			data["application"] = apps
 			resp = jsonify(data)
 			resp.status_code = 200
 			return resp
@@ -45,17 +53,16 @@ def users():
 	try:
 		user = UserModel()
 		rows = user.get_users()
-		# neo_user = CypherModel()
-		# neo_rows = neo_user.get_users_applications_from_neo4j()
-		# for id in rows:
-		# 	app_list = []
-		# 	for neoid in neo_rows:
-		# 		if id['id'] != neoid['neo_id']:
-		# 			continue
-		# 		else:
-		# 			app_list.append(neoid['application'])
-		# 			id['application'] = app_list
-		# print("ww: ", rows)
+		neo_user = CypherModel()
+		neo_rows = neo_user.get_users_applications_from_neo4j()
+		for id in rows:
+			app_list = []
+			for neoid in neo_rows:
+				if id['id'] != neoid['neo_id']:
+					continue
+				else:
+					app_list.append(neoid['application'])
+					id['application'] = app_list
 		return jsonify(rows)
 	except Exception as e:
 		print(e)
@@ -130,6 +137,8 @@ def delete_user(id):
 	try:
 		user = UserModel()
 		user.delete_user(id)
+		neo_user = CypherModel()
+		neo_user.delete_user_application(id)
 		resp = jsonify({"result":'User deleted successfully!'})
 		resp.status_code = 200
 		return resp
