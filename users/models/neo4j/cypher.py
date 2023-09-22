@@ -48,3 +48,14 @@ class CypherModel:
                 my_dict['neo_id'] = id
                 neo4j_lst.append(my_dict)
             return neo4j_lst[0]
+
+    def update_user_applications_by_id(self, id, application):
+        try:
+            drive.execute_query(
+            "MATCH (u:USER) WHERE ID(u)=%s WITH u MATCH (a:APPLICATION) WHERE a.name IN %s MERGE (u)-[:HAS_ACCESS_TO]->(a)"%(id, application),
+            database_="neo4j",
+            )
+
+            return application
+        except Exception as e:
+            print(e)

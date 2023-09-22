@@ -42,10 +42,20 @@ def add_user():
 @app.route('/users')
 @cross_origin(supports_credentials=True)
 def users():
-
 	try:
 		user = UserModel()
 		rows = user.get_users()
+		# neo_user = CypherModel()
+		# neo_rows = neo_user.get_users_applications_from_neo4j()
+		# for id in rows:
+		# 	app_list = []
+		# 	for neoid in neo_rows:
+		# 		if id['id'] != neoid['neo_id']:
+		# 			continue
+		# 		else:
+		# 			app_list.append(neoid['application'])
+		# 			id['application'] = app_list
+		# print("ww: ", rows)
 		return jsonify(rows)
 	except Exception as e:
 		print(e)
@@ -59,7 +69,7 @@ def user(id):
 		user = UserModel()
 		row = user.user_details(id)
 		if row is None:
-			return "Id not found in database"
+			raise Exception("ID Not Found")
 		inner_obj = {}
 		inner_obj['id']= row[0]
 		inner_obj['name']= row[1]
@@ -97,14 +107,19 @@ def update_user(id):
 			_email = _json['email']
 		else:
 			raise Exception("Missing field 'email'")
+		if "application" in _json:
+			_application = _json['application']
+		else:
+			raise Exception("Application is not registerd")
 		if _name and _email and _id and request.method == 'PUT':
 			user = UserModel()
 			data = user.update_user(_name, _email, id)
+			neo_user = CypherModel()
+			apps = neo_user.update_user_applications_by_id(id, _application)
+			data["application"] = apps
 			resp = jsonify(data)
 			resp.status_code = 200
 			return resp
-		else:
-			return not_found()
 	except Exception as e:
 		print(e)
 		return e
