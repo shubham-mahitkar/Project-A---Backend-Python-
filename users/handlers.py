@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_cors import CORS, cross_origin
 from users.models.sql.query import UserModel
 from users.models.neo4j.cypher import CypherModel
+from users.models.snowflake.snowflake_sql import SnowflakeModel
 from users.connectors.neo4j import drive
 import json
 
@@ -91,11 +92,28 @@ def user(id):
 			inner_obj['application'] = rows['application']
 		else:
 			inner_obj['application'] = ['no application registerd']
+		snowflake = SnowflakeModel()
+		followers, labels = snowflake.get_followers_by_user(inner_obj['name'])
+		if followers or labels:
+			inner_obj['followers'] = int(followers[0])
+			inner_obj['labels'] = labels
 		lst.append(inner_obj)
 		return jsonify(lst)
 	except Exception as e:
 		print(e)
 
+@app.route('/user/<int:id>/awards')
+@cross_origin(supports_credentials=True)
+def awards(id):
+	try:
+		lst = []
+		snowflake = SnowflakeModel()
+		awards = snowflake.get_awards_by_id(id)
+		for row in awards:
+			lst.append(row)
+		return jsonify(lst)
+	except Exception as e:
+		print(e)
 
 @app.route('/update/<int:id>', methods=['PUT'])
 @cross_origin(supports_credentials=True)
@@ -175,7 +193,6 @@ def get_users_applications_by_id(id):
     try:
         user = CypherModel()
         rows = user.user_details_by_id(id)
-        print("ress: ", rows)
         return rows
     except Exception as e:
         print(e)
