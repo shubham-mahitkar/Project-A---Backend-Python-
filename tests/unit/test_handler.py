@@ -1,6 +1,7 @@
 import json
 from unittest.mock import patch
 
+
 # ########Read#########
 @patch("users.handlers.UserModel")
 @patch("users.handlers.CypherModel")
@@ -8,16 +9,31 @@ def test_get_users(mock_cypher_model, mock_user_model, client):
     """Test GET /users endpoint."""
 
     mock_user_model().get_users.return_value = [
-        {'id': 100, 'name': 'namrata', 'email': 'npatel@test.com', 'password': 'foo'}
+        {'id': 100, 'name': 'namrata', 'email': 'npatel@test.com', 'password': 'foo'},
+        {'id': 101, 'name': 'shubham', 'email': 'shubham@test.com', 'password': 'foo'},
     ]
-    mock_cypher_model().get_users.return_value = [{'name': 'Namrata', 'application': 'Facebook', 'neo_id': 294}]
+    mock_cypher_model().get_users_applications_from_neo4j.return_value = [
+        {'application': 'Facebook', 'neo_id': 100}
+    ]
 
     response = client.get('/users')
     assert response.status_code == 200
 
     actual_result = json.loads(response.data)
     expected_result = [
-        {'email': 'npatel@test.com', 'id': 100, 'name': 'namrata', 'password': 'foo'}
+        {
+            'email': 'npatel@test.com',
+            'id': 100,
+            'name': 'namrata',
+            'password': 'foo',
+            'application': ['Facebook']
+        }, {
+            'email': 'shubham@test.com',
+            'id': 101,
+            'name': 'shubham',
+            'password': 'foo',
+            # @todo in this case it should return 'application': []
+        }
     ]
     assert actual_result == expected_result
 
