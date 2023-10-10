@@ -11,6 +11,8 @@
 
 
 from users.connectors.db import mysql
+from users.utils import util
+from werkzeug.security import generate_password_hash, check_password_hash
 
 class UserModel:
 
@@ -57,3 +59,30 @@ class UserModel:
         cursor.execute(sql, data)
         mysql.connection.commit()
         return {"id":id, "name":name, "email": email }
+
+    def generate_and_hash_password(self):
+        random_password = util.generate_random_password()
+        hashed_password = generate_password_hash(random_password)
+        return random_password, hashed_password
+
+    def mysql_insert_bulk_users(self, csv_data):
+        try:
+            headers = next(csv_data)
+            with mysql.connection.cursor() as cursor:
+                for row in csv_data:
+                    user_name, user_email = row[0], row[1]
+                    random_password, hashed_password = self.generate_and_hash_password()
+
+                    sql = "INSERT INTO tbl_user(user_name, user_email, user_password) VALUES(%s, %s, %s)"
+                    data = (user_name, user_email, hashed_password)
+
+                    cursor.execute(sql, data)
+                    mysql.connection.commit()
+
+        except Exception as e:
+            print(e)
+
+    def get_neo_id_by_name(self, name):
+        self.cursor.execute(f"SELECT user_id id FROM tbl_user WHERE user_name='{name}'")
+        neo_id = self.cursor.fetchone()
+        return neo_id

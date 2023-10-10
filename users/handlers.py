@@ -7,6 +7,8 @@ from users.models.neo4j.cypher import CypherModel
 from users.models.snowflake.snowflake_sql import SnowflakeModel
 from users.connectors.neo4j import drive
 import json
+import csv
+import io
 
 @app.route('/add', methods=['POST'])
 @cross_origin(supports_credentials=True)
@@ -140,7 +142,7 @@ def update_user(id):
 			user = UserModel()
 			data = user.update_user(_name, _email, id)
 			neo_user = CypherModel()
-			apps = neo_user.update_user_applications_by_id(id, _application)
+			apps = neo_user.update_user_applications_by_id(_name, id, _application)
 			data["application"] = apps
 			resp = jsonify(data)
 			resp.status_code = 200
@@ -196,3 +198,27 @@ def get_users_applications_by_id(id):
         return rows
     except Exception as e:
         print(e)
+
+@app.route('/bulk-user', methods=['POST'])
+def bulk_user_upload():
+    try:
+        csv_file = request.files['file']
+        insert_bulk_users(csv_file)
+        return jsonify({"message": "Bulk user upload successful"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+def insert_bulk_users(csv_file):
+    csv_data = io.StringIO(csv_file.read().decode('utf-8'))
+    data = csv.reader(csv_data)
+
+    snowflake = SnowflakeModel()
+    snowflake.snowflake_insert_bulk_users(data)
+    csv_data.seek(0)
+
+    user = UserModel()
+    user.mysql_insert_bulk_users(data)
+    csv_data.seek(0)
+
+    neo = CypherModel()
+    neo.neo4j_insert_bulk_users(data)

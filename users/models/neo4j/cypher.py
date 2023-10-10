@@ -1,5 +1,6 @@
 from users.connectors.neo4j import drive
 from flask import Flask, request, jsonify
+from users.models.sql.query import UserModel
 
 
 class CypherModel:
@@ -60,21 +61,46 @@ class CypherModel:
         except Exception as e:
             print(e)
 
-    def update_user_applications_by_id(self, id, application):
+    def update_user_applications_by_id(self, name, id, application):
         try:
             drive.execute_query(
             "MATCH (u:USER)-[r:HAS_ACCESS_TO]->() WHERE u.neo_id=%s DELETE r WITH u MATCH (a:APPLICATION) WHERE a.name IN %s MERGE (u)-[:HAS_ACCESS_TO]->(a)"%(id, application),
             database_="neo4j",
             )
+            drive.execute_query(
+            "MATCH (n:USER {neo_id: %s}) SET n.name = '%s';"%(id, name),
+            database_="neo4j",
+            )
             return application
         except Exception as e:
             print(e)
-            
+
     def delete_user_application(self, id):
         try:
             drive.execute_query(
             "MATCH (n) WHERE n.neo_id=%s DETACH DELETE n"%(id),
             database_="neo4j",
             )
+        except Exception as e:
+            print(e)
+
+    def merge_relationship_query(self, neo_id, name, app):
+        return (
+            "MERGE (user:USER {neo_id:%s, name:'%s'}) WITH user "
+            "MATCH (app:APPLICATION {name:'%s'}) MERGE (user)-[:HAS_ACCESS_TO]->(app)"
+            % (neo_id, name, app)
+        )
+
+    def neo4j_insert_bulk_users(self, csv_data):
+        headers = next(csv_data)
+        try:
+            for row in csv_data:
+                name = row[0]
+                user = UserModel()
+                neo_id = user.get_neo_id_by_name(name)[0]
+                apps = row[2].split(', ')
+                for app in apps:
+                    query = self.merge_relationship_query(neo_id, name, app)
+                    drive.execute_query(query, database_="neo4j")
         except Exception as e:
             print(e)
