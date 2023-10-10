@@ -1,3 +1,6 @@
+import json
+import csv
+import io
 from users.app import app
 from flask import Flask, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -6,48 +9,40 @@ from users.models.sql.query import UserModel
 from users.models.neo4j.cypher import CypherModel
 from users.models.snowflake.snowflake_sql import SnowflakeModel
 from users.connectors.neo4j import drive
-import json
-import csv
-import io
+
 
 @app.route('/add', methods=['POST'])
 @cross_origin(supports_credentials=True)
 def add_user():
-	try:
-		_json = request.json
-		if "name" in _json:
-			_name = _json['name']
-		else:
-			raise Exception("Missing field 'name'")
-		if "email" in _json:
-			_email = _json['email']
-		else:
-			raise Exception("Missing field 'email'")
-		if "password" in _json:
-			_password = _json['password']
-		else:
-			raise Exception("Missing field 'password'")
-		if "application" in _json:
-			_application = _json['application']
-		else:
-			raise Exception("Application is not registerd")
+    try:
+        _json = request.json
+        validate_new_input(_json)
 
-		if _name and _email and _password and request.method == 'POST':
-			#do not save password as a plain text
-			_hashed_password = generate_password_hash(_password)
-			user = UserModel()
-			data = user.add_user(_name, _email, _hashed_password)
-			id = data['id']
-			neo_user = CypherModel()
-			apps = neo_user.add_user_application(id, _name, _application)
-			data["application"] = apps
-			resp = jsonify(data)
-			resp.status_code = 200
-			return resp
-		else:
-			return not_found()
-	except Exception as e:
-		print(e)
+        _hashed_password = generate_password_hash(_json['password'])
+
+        user = UserModel()
+        data = user.add_user(_json['name'], _json['email'], _hashed_password)
+        user_id = data['id']
+
+        neo_user = CypherModel()
+        apps = neo_user.add_user_application(user_id, _json['name'], _json['application'])
+        data["application"] = apps
+
+        return jsonify(data), 200
+
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+def validate_new_input(_json):
+    required_fields = ['name', 'email', 'password', 'application']
+
+    for field in required_fields:
+        if field not in _json:
+            raise Exception(f"Missing field '{field}'")
+
+    if not _json['name'] or not _json['email'] or not _json['password']:
+        raise Exception("Name, email, and password are required fields")
 
 
 @app.route('/users')
@@ -80,13 +75,17 @@ def user(id):
 		row = user.user_details(id)
 		if row is None:
 			raise Exception("ID Not Found")
-		inner_obj = {}
-		inner_obj['id']= row[0]
-		inner_obj['name']= row[1]
-		inner_obj['email']= row[2]
-		inner_obj['password']= row[3]
+
+		inner_obj = {
+            'id': row[0],
+            'name': row[1],
+            'email': row[2],
+            'password': row[3]
+        }
+
 		neo_user = CypherModel()
 		rows = neo_user.user_details_by_id(id)
+
 		if rows == None:
 			lst.append(inner_obj)
 			return jsonify(lst)
@@ -94,15 +93,20 @@ def user(id):
 			inner_obj['application'] = rows['application']
 		else:
 			inner_obj['application'] = ['no application registerd']
+
 		snowflake = SnowflakeModel()
 		followers, labels = snowflake.get_followers_by_user(inner_obj['name'])
+
 		if followers or labels:
 			inner_obj['followers'] = int(followers[0])
 			inner_obj['labels'] = labels
 		lst.append(inner_obj)
+
 		return jsonify(lst)
+
 	except Exception as e:
 		print(e)
+
 
 @app.route('/user/<int:id>/awards')
 @cross_origin(supports_credentials=True)
@@ -117,39 +121,38 @@ def awards(id):
 	except Exception as e:
 		print(e)
 
+
 @app.route('/update/<int:id>', methods=['PUT'])
 @cross_origin(supports_credentials=True)
 def update_user(id):
-	try:
-		_json = request.json
-		if "id" in _json:
-			_id = _json['id']
-		else:
-			raise Exception("ID Not Found")
-		if "name" in _json:
-			_name = _json['name']
-		else:
-			raise Exception("Missing field 'name'")
-		if "email" in _json:
-			_email = _json['email']
-		else:
-			raise Exception("Missing field 'email'")
-		if "application" in _json:
-			_application = _json['application']
-		else:
-			raise Exception("Application is not registerd")
-		if _name and _email and _id and request.method == 'PUT':
-			user = UserModel()
-			data = user.update_user(_name, _email, id)
-			neo_user = CypherModel()
-			apps = neo_user.update_user_applications_by_id(_name, id, _application)
-			data["application"] = apps
-			resp = jsonify(data)
-			resp.status_code = 200
-			return resp
-	except Exception as e:
-		print(e)
-		return e
+    try:
+        _json = request.json
+        validate_input(_json)
+
+        user = UserModel()
+        data = user.update_user(_json['name'], _json['email'], id)
+
+        neo_user = CypherModel()
+        apps = neo_user.update_user_applications_by_id(_json['name'], id, _json.get('application', []))
+        data["application"] = apps
+
+        return jsonify(data), 200
+
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+
+def validate_input(_json):
+    required_fields = ['id', 'name', 'email', 'application']
+
+    for field in required_fields:
+        if field not in _json:
+            raise Exception(f"Missing field '{field}'")
+
+    if not _json['name'] or not _json['email'] or not _json['id']:
+        raise Exception("ID, name, and email are required fields")
+
 		
 @app.route('/delete/<int:id>', methods=['DELETE'])
 @cross_origin(supports_credentials=True)
@@ -189,6 +192,7 @@ def get_users_applications():
     except Exception as e:
         print(e)
 
+
 @app.route('/neo4j/<int:id>')
 @cross_origin(supports_credentials=True)
 def get_users_applications_by_id(id):
@@ -199,6 +203,7 @@ def get_users_applications_by_id(id):
     except Exception as e:
         print(e)
 
+
 @app.route('/bulk-user', methods=['POST'])
 def bulk_user_upload():
     try:
@@ -207,6 +212,7 @@ def bulk_user_upload():
         return jsonify({"message": "Bulk user upload successful"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 def insert_bulk_users(csv_file):
     csv_data = io.StringIO(csv_file.read().decode('utf-8'))
