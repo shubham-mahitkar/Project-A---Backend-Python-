@@ -51,6 +51,7 @@ def users():
 	try:
 		user = UserModel()
 		rows = user.get_users()
+
 		neo_user = CypherModel()
 		neo_rows = neo_user.get_users_applications_from_neo4j()
 		for id in rows:
@@ -62,6 +63,7 @@ def users():
 					app_list.append(neoid['application'])
 					id['application'] = app_list
 		return jsonify(rows)
+
 	except Exception as e:
 		print(e)
 
