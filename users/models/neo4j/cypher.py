@@ -1,5 +1,4 @@
 from users.connectors.neo4j import drive
-from flask import Flask, request, jsonify
 from users.models.sql.query import UserModel
 
 

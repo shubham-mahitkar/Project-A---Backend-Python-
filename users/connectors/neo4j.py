@@ -1,5 +1,5 @@
-from neo4j import GraphDatabase
 import os
+from neo4j import GraphDatabase
 
 
 URI = os.getenv('NEO4J_URI')
