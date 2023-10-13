@@ -1,7 +1,11 @@
+import functools
 import secrets
 import string
 import os
 import re
+from copy import deepcopy
+from flask import request, jsonify
+from marshmallow import ValidationError
 
 
 def is_csv_file(file_path):
@@ -32,3 +36,33 @@ def convert_numeric_string(value):
             number_part *= 1000000
         return "{:,.0f}".format(number_part)
     return value
+
+
+def validate_name(name):
+    if len(name) < 3:
+        raise ValueError("Name must be at least 3 characters long")
+    return name
+
+
+def validate_email(email):
+    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_regex, email):
+        raise ValueError("Invalid email format")
+    return email
+
+
+def validate_request_data(schema, partial=False):
+    def validator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            json_data = request.get_json() or dict()
+            data = deepcopy(json_data)
+            data.update(kwargs)
+            try:
+                schema.load(data, partial=partial)
+            except ValidationError as err:
+                return jsonify({"error": str(err)}), 500
+            else:
+                return func(*args, **kwargs)
+        return wrapper
+    return validator

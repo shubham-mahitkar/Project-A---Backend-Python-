@@ -79,7 +79,7 @@ class CypherModel:
     def merge_relationship_query(self, neo_id, name, app):
         return (
             "MERGE (user:USER {neo_id:%s, name:'%s'}) WITH user "
-            "MATCH (app:APPLICATION {name:'%s'}) MERGE (user)-[:HAS_ACCESS_TO]->(app)"
+            "MATCH (app:APPLICATION {name:'%s'}) WHERE NOT (user)-[:HAS_ACCESS_TO]->(app) MERGE (user)-[:HAS_ACCESS_TO]->(app)"
             % (neo_id, name, app)
         )
 

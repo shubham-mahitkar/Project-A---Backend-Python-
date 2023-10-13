@@ -73,14 +73,26 @@ class UserModel:
                     user_name, user_email = row[0], row[1]
                     random_password, hashed_password = self.generate_and_hash_password()
 
-                    sql = "INSERT INTO tbl_user(user_name, user_email, user_password) VALUES(%s, %s, %s)"
-                    data = (user_name, user_email, hashed_password)
+                    # Check if user with the same username or email already exists
+                    select_sql = "SELECT COUNT(*) FROM tbl_user WHERE user_name = %s OR user_email = %s"
+                    select_data = (user_name, user_email)
+                    cursor.execute(select_sql, select_data)
+                    result = cursor.fetchone()
 
-                    cursor.execute(sql, data)
-                    mysql.connection.commit()
+                    if result[0] == 0:  # No existing user with the same username or email
+                        # Insert the new user
+                        insert_sql = "INSERT INTO tbl_user(user_name, user_email, user_password) VALUES(%s, %s, %s)"
+                        insert_data = (user_name, user_email, hashed_password)
+
+                        cursor.execute(insert_sql, insert_data)
+                        mysql.connection.commit()
+                    else:
+                        print(f"User with username {user_name} or email {user_email} already exists.")
+                        raise Exception(f"User with username {user_name} or email {user_email} already exists.")
 
         except Exception as e:
             print(e)
+
 
     def get_neo_id_by_name(self, name):
         self.cursor.execute(f"SELECT user_id id FROM tbl_user WHERE user_name='{name}'")

@@ -8,14 +8,24 @@ from users.connectors.neo4j import drive
 from users.models.sql.query import UserModel
 from users.models.neo4j.cypher import CypherModel
 from users.models.snowflake.snowflake_sql import SnowflakeModel
+from users.utils.util import validate_request_data
+from users.utils.validations.schemas.userschema import UserSchema
 from werkzeug.security import generate_password_hash
+
+user_schema = UserSchema()
 
 @app.route('/add', methods=['POST'])
 @cross_origin(supports_credentials=True)
+@validate_request_data(UserSchema())        #validation 1
 def add_user():
     try:
         _json = request.json
-        validate_new_input(_json)
+        # validate_new_input(_json)         #validation 2(optional)
+        
+        # Use Marshmallow to validate the incoming JSON data
+        # errors = user_schema.validate(_json)      #validation 3
+        # if errors:
+        #     return jsonify(errors), 400
 
         _hashed_password = generate_password_hash(_json['password'])
 
@@ -25,7 +35,11 @@ def add_user():
 
         neo_user = CypherModel()
         apps = neo_user.add_user_application(user_id, _json['name'], _json['application'])
-        data["application"] = apps
+        if not apps:
+            print("Error: No applications were added.")
+            raise ValueError("No applications were added.")
+        else:
+            data["application"] = apps
 
         return jsonify(data), 200
 
@@ -125,17 +139,22 @@ def awards(id):
 
 @app.route('/update/<int:id>', methods=['PUT'])
 @cross_origin(supports_credentials=True)
+@validate_request_data(UserSchema())        #validation 1
 def update_user(id):
     try:
         _json = request.json
-        validate_input(_json)
+        # validate_input(_json)             #validation 2(optional)
 
         user = UserModel()
         data = user.update_user(_json['name'], _json['email'], id)
 
         neo_user = CypherModel()
         apps = neo_user.update_user_applications_by_id(_json['name'], id, _json.get('application', []))
-        data["application"] = apps
+        if not apps:
+            print("Error: No applications were added.")
+            raise ValueError("No applications were added.")
+        else:
+            data["application"] = apps
 
         return jsonify(data), 200
 
@@ -218,14 +237,15 @@ def bulk_user_upload():
 def insert_bulk_users(csv_file):
     csv_data = io.StringIO(csv_file.read().decode('utf-8'))
     data = csv.reader(csv_data)
-
-    snowflake = SnowflakeModel()
-    snowflake.snowflake_insert_bulk_users(data)
-    csv_data.seek(0)
-
+    
     user = UserModel()
     user.mysql_insert_bulk_users(data)
     csv_data.seek(0)
 
     neo = CypherModel()
     neo.neo4j_insert_bulk_users(data)
+    csv_data.seek(0)
+
+    snowflake = SnowflakeModel()
+    snowflake.snowflake_insert_bulk_users(data)
+
