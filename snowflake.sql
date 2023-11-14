@@ -1,7 +1,7 @@
 --1. Find how many followers there are for “Taylor Swift”. Hint: use ARTIST_DATA.DEV.ARTISTS table
 
-SELECT "ARTIST", "FOLLOWERS" FROM "ARTIST_DATA"."DEV"."ARTISTS"
-WHERE "ARTIST" = 'Taylor Swift';
+SELECT ARTIST, FOLLOWERS FROM ARTIST_DATA.DEV.ARTISTS
+WHERE ARTIST = 'Taylor Swift';
 
 ---------------------------------------------
 --2. Find all male “hip hop” artists who have followers between 2,000,000 to 1,000,000. Hint: use ARTIST_DATA.DEV.ARTISTS table
